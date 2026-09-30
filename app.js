@@ -10,6 +10,8 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
 import { 
   getAuth, 
   signInWithPopup, 
+  signInWithRedirect,
+  getRedirectResult,
   GoogleAuthProvider, 
   signOut, 
   onAuthStateChanged 
@@ -65,6 +67,11 @@ function init() {
   setupEventListeners();
   observeAuthState();
   listenToGuestbookMessages();
+
+  // 리디렉션 로그인 결과 확인 (팝업 차단 시 대비)
+  getRedirectResult(auth).catch((error) => {
+    console.error("리디렉션 로그인 결과 오류:", error);
+  });
 }
 
 // 7. 이벤트 리스너 등록
@@ -111,22 +118,23 @@ function observeAuthState() {
   });
 }
 
-// 9. 구글 팝업 로그인 실행
+// 9. 구글 팝업 로그인 실행 (팝업 차단 시 리디렉션 자동 전환)
 async function handleGoogleLogin() {
   try {
-    btnLogin.disabled = true;
-    btnLogin.style.opacity = '0.7';
     await signInWithPopup(auth, provider);
   } catch (error) {
     console.error("로그인 중 오류 발생:", error);
+    if (error.code === 'auth/popup-blocked') {
+      console.log("팝업 차단 감지: 리디렉션(페이지 이동) 방식으로 자동 로그인합니다.");
+      // 브라우저 팝업이 차단된 경우 전체 페이지 이동 방식으로 즉시 전환
+      await signInWithRedirect(auth, provider);
+      return;
+    }
     if (error.code === 'auth/popup-closed-by-user') {
-      // 사용자가 팝업을 닫은 경우는 알림 생략
+      // 사용자가 팝업을 직접 닫은 경우 무시
     } else {
       alert("로그인 처리 중 문제가 발생했습니다: " + error.message);
     }
-  } finally {
-    btnLogin.disabled = false;
-    btnLogin.style.opacity = '1';
   }
 }
 
