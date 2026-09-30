@@ -42,6 +42,7 @@ const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
 const provider = new GoogleAuthProvider();
+provider.setCustomParameters({ prompt: 'select_account' });
 
 // 4. 상태 변수 (현재 로그인한 사용자)
 let currentUser = null;
@@ -118,22 +119,25 @@ function observeAuthState() {
   });
 }
 
-// 9. 구글 팝업 로그인 실행 (팝업 차단 시 리디렉션 자동 전환)
+// 9. 구글 팝업 로그인 실행
 async function handleGoogleLogin() {
   try {
-    await signInWithPopup(auth, provider);
+    const result = await signInWithPopup(auth, provider);
+    if (result && result.user) {
+      alert(`🎉 반갑습니다, ${result.user.displayName || '효명인'}님! 로그인이 완료되었습니다.`);
+    }
   } catch (error) {
     console.error("로그인 중 오류 발생:", error);
     if (error.code === 'auth/popup-blocked') {
-      console.log("팝업 차단 감지: 리디렉션(페이지 이동) 방식으로 자동 로그인합니다.");
-      // 브라우저 팝업이 차단된 경우 전체 페이지 이동 방식으로 즉시 전환
-      await signInWithRedirect(auth, provider);
-      return;
-    }
-    if (error.code === 'auth/popup-closed-by-user') {
-      // 사용자가 팝업을 직접 닫은 경우 무시
+      alert(
+        "🚫 브라우저가 구글 로그인 팝업창을 차단했습니다!\n\n" +
+        "주소창 맨 오른쪽 끝의 [🚫 팝업 차단됨] 아이콘을 누르고\n" +
+        "['항상 허용']을 선택하신 후 다시 로그인 버튼을 눌러주세요."
+      );
+    } else if (error.code === 'auth/popup-closed-by-user') {
+      // 사용자가 팝업을 직접 닫음
     } else {
-      alert("로그인 처리 중 문제가 발생했습니다: " + error.message);
+      alert("로그인 처리 중 문제가 발생했습니다:\n[" + error.code + "] " + error.message);
     }
   }
 }
